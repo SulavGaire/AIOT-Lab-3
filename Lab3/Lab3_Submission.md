@@ -1,106 +1,131 @@
-# Lab 3 Submission Sheet
+# Lab 3 Submission Report
+## On-Device AI Deployment on XIAO ESP32-S3
 
 **ECE 4930/6930 – Artificial Intelligence of Things**
 
-**TinyML with XIAO ESP32-S3**
+---
 
-Complete every applicable field. Use “N/A” only with a reason. Attach evidence or provide links that course staff can open. This template accompanies [Lab3_Instruction.md](Lab3_Instruction.md).
+# Team Information
 
-## 1 — Student and project
+| Item | Response |
+|---|---|
+| Team Number | |
+| Date | |
+| Member 1 | |
+| Member 2 | |
+| Member 3 | |
 
-- Name / student ID:
-- Course / section: ECE 4930/6930 /
-- Submission date:
-- Project title:
-- Route: custom image / custom audio / custom detection / approved pretrained baseline
-- Application and operating conditions:
-- Model input and output:
-- Edge Impulse project URL and export version, or pretrained model URL and version:
-- Adapted example URL and changes made:
+**Path completed:**
 
-## 2 — Hardware and software
+- [ ] **A — Custom Edge Impulse model**
+- [ ] **B — Pretrained SenseCraft gesture model**
 
-| Item | Your configuration |
-| --- | --- |
-| Board and sensor/camera model | |
-| Arduino IDE version | |
-| ESP32 board package version | |
-| Board selection and port | |
-| PSRAM option | |
-| Flash size and partition scheme | |
-| USB CDC setting and serial baud rate | |
-| Exported library name/version | |
-| Model precision and optimization setting | |
-| Image size/color format or audio sample rate/window | |
+---
 
-## 3 — Data and model
+# Part 0 — Project Information
 
-For a pretrained route, identify the model and mark unavailable training fields with a reason. Report your own live evaluation separately.
+| Item | Response |
+|---|---|
+| AI task (what is recognized?) | |
+| Model or project link | |
+| Camera or microphone | |
 
-| Class | Training examples or duration | Test examples or duration | Data source |
-| --- | --- | --- | --- |
-| | | | |
-| | | | |
-| | | | |
+### P0-Q1. Why did you choose this AI task?
 
-- How did you keep capture sessions separate across the data split?
-- Processing block / learning block / important training settings:
-- Deployed model variant and evidence of quantization:
-- Test metric name, value, test-set size, and thresholds:
-- One example prediction: actual label, predicted label, confidence, and evidence filename:
-- Failure case and likely cause:
+```text
 
-## 4 — Performance results
 
-Report Flash and RAM separately. Keep estimates, whole-firmware use, and hardware measurements distinct. Preserve the units shown in the source.
+```
 
-| Metric | Result and units | Source or evidence filename |
-| --- | --- | --- |
-| Held-out test accuracy, or named detection metric | | |
-| Test sample count / class balance | | |
-| Edge Impulse estimated latency and target | | |
-| Board DSP time, mean | | |
-| Board neural-network time, mean | | |
-| Board anomaly time, if used | | |
-| Board latency for stated scope: mean / min / max | | |
-| Timing run count | | |
-| Edge Impulse estimated Flash | | |
-| Edge Impulse estimated RAM | | |
-| Arduino program storage: used / limit | | |
-| Arduino static RAM: used / limit | | |
-| Runtime heap / PSRAM observation, optional | | |
-| Live quality metric and trial count | | |
+---
 
-- Timing scope and timer resolution:
-- Warm-up handling and test conditions:
-- For live classification: correct trials / total trials; for detection: metric and matching rule:
-- Resource limit or optimization considered; effect if measured:
-- Explain any unavailable values or baseline substitutions:
+# Part 1 — Model Preparation
 
-## 5 — Evidence and reproducibility
+**Path A:** Fill out the table and attach a Model Testing screenshot with one example prediction. **Path B:** Enter the pretrained model link and complete the five-trial table instead.
 
-| ID | Evidence | Filename or accessible link |
-| --- | --- | --- |
-| E1 | Board/port selection and PSRAM setting | |
-| E2 | Dataset split, test results, and example prediction; baseline uses model identity and live trial records | |
-| E3 | Deployment estimates with target and variant; explain unavailable baseline values | |
-| E4 | Successful build and upload; approved browser route uses deployment confirmation | |
-| E5 | Live board inference screenshot/video and readable timing output | |
-| E6 | Final sketch, dependency versions, and reproduction instructions | |
+| Path A metric | Result |
+|---|---|
+| Model type and input size | |
+| Test accuracy or named detection metric | |
+| Estimated latency (ms) and target device | |
+| Estimated Flash/ROM (KB) | |
+| Estimated RAM (KB) | |
 
-Suggested package contents: completed sheet; `src/` for your sketch; `evidence/` for captures and logs; `results/` for timing and trial records. Include the exported library if course submission limits permit, or identify an accessible export and exact version. Do not assume a project link alone reproduces that export.
+**Path A — Model Testing screenshot / example prediction:**
 
-## 6 — Discussion and final check
+```text
+Screenshot or file link:
+```
 
-- What worked, and under what conditions?
-- What failed, and what would you change next?
-- How did accuracy, latency, and memory affect your design?
+**Path B — Gesture trials:**
 
-- [ ] The submitted model version matches the demonstrated version.
-- [ ] The demo uses the board's live sensor and shows on-device inference.
-- [ ] Estimates and measurements are labeled correctly.
-- [ ] Every evidence link opens for course staff.
-- [ ] Adapted sources and contributions are identified.
-- [ ] Shared files contain no API keys or Wi-Fi credentials.
+| Trial | Gesture | Prediction | Correct? |
+|---|---|---|---|
+| 1 | | | |
+| 2 | | | |
+| 3 | | | |
+| 4 | | | |
+| 5 | | | |
 
-Grading weights, due date, and submission location follow the course announcement.
+**Correct trials:** _____ / 5 = _____ % (functional success rate, not formal model accuracy)
+
+---
+
+# Part 2 — Deployment on XIAO
+
+| Evidence | Screenshot or video link |
+|---|---|
+| Successful Arduino upload (A) / SenseCraft deployment (B) | |
+| Working live inference on the XIAO | |
+
+### P2-Q1. What code or setting did you change? Did you encounter an error, and how did you solve it?
+
+```text
+
+
+
+```
+
+---
+
+# Part 3 — Performance and Analysis
+
+**Record three on-device inference latency readings if available. Otherwise write N/A.**
+
+| Trial | Latency (ms) |
+|---|---:|
+| 1 | |
+| 2 | |
+| 3 | |
+
+**Median latency:** __________ ms / N/A  
+**Timing field used (e.g., Classification):** __________ / N/A
+
+### P3-Q1. What did you observe about prediction quality, latency, or memory use?
+
+```text
+
+
+
+```
+
+### P3-Q2. What is one important difference between deploying AI on the XIAO and on the Jetson Nano?
+
+```text
+
+
+
+```
+
+---
+
+# Submission Checklist
+
+- [ ] Team information and selected path are complete.
+- [ ] Model link and test results are included (or gesture trials for Path B).
+- [ ] Successful deployment and live inference evidence are included.
+- [ ] Available latency, Flash, and RAM values are reported; estimates are labeled.
+- [ ] Questions are answered.
+- [ ] **One report per team.**
+
+**Instructions:** [Lab 3 Instruction](Lab3_Instruction.md)

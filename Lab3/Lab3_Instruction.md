@@ -1,221 +1,194 @@
-# Lab 3 – TinyML with XIAO ESP32-S3
+# Lab 3: On-Device AI Deployment on XIAO ESP32-S3
 
-**ECE 4930/6930 – Artificial Intelligence of Things**  
-**Draft for instructor review · 19 October 2026**
+**ECE 4930/6930 – Artificial Intelligence of Things**
 
-Use this guide to build and evaluate an AI application on the XIAO ESP32-S3 Sense. Complete the submission sheet as you work. Save evidence when each step succeeds.
+> [!NOTE]
+> **Platform:** Seeed Studio XIAO ESP32S3 Sense  
+> **Software:** Edge Impulse + Arduino IDE (or SenseCraft for the baseline)  
+> **Preparation:** Collect training data before class if you choose a custom model.
+
+---
 
 ## Overview
 
-In this lab, design a small AI application using the XIAO ESP32-S3 Sense camera or microphone. Train and evaluate a lightweight model in Edge Impulse, then deploy it through Arduino IDE. Demonstrate live inference and report accuracy or a suitable detection metric, latency, and separate Flash and RAM use.
+In Labs 1–2, you ran AI on the Jetson Nano. In Lab 3, you will deploy AI on a much smaller microcontroller: the **XIAO ESP32S3 Sense**.
 
-The standard XIAO ESP32-S3 Sense has a dual-core Xtensa LX7 processor running at up to 240 MHz, 8 MB Flash, and 8 MB PSRAM. It is a microcontroller, not a Linux computer. The Sense expansion board supplies the camera and microphone. Check the camera revision on your board.
+Choose **one** path:
 
-Unlike the earlier fixed-task labs, this assignment is open-ended. Custom training with your own data is strongly encouraged. A pretrained route is available only after the instructor confirms a compatible model and its submission requirements.
+| Path | What you will do |
+|---|---|
+| **A — Custom model (recommended)** | Train an image classification, object detection, or audio model in [Edge Impulse](https://edgeimpulse.com/) and run it on the XIAO. |
+| **B — Gesture baseline** | Deploy a [pretrained SenseCraft gesture model](https://sensecraft.seeed.cc/ai/view-model/60111-gesture-detection?tab=public); no model training is required. |
+
+```text
+Choose application → Prepare model → Deploy to XIAO → Test → Report results
+```
 
 ## Learning Objectives
 
-- Define an image, audio, or object-detection task suitable for a microcontroller.
-- Collect labeled data and evaluate a model on held-out samples.
-- Export an INT8 model and run it from the board's live sensor.
-- Measure performance and explain memory or accuracy limitations.
+- Deploy a small AI model to a microcontroller.
+- Test predictions and measure inference performance.
+- Identify the effects of limited memory and computing resources.
 
-## Project Options
+---
 
-| Option | Example application | Starting reference |
-| --- | --- | --- |
-| Image classification | Recognize a few desk objects | [Seeed image classification](https://wiki.seeedstudio.com/tinyml_course_Image_classification_project/) |
-| Audio classification | Recognize a keyword or environmental sound | [Seeed keyword spotting](https://wiki.seeedstudio.com/xiao_esp32s3_keyword_spotting/) |
-| Object detection | Locate or count small objects | Select a compact model suitable for the XIAO |
-| Pretrained baseline | Demonstrate a verified model without retraining | Instructor confirmation pending |
+# Part 0 — Hardware Setup
 
-## Laboratory Workflow
+1. Connect the XIAO ESP32S3 Sense and camera using a **USB data cable**.
+2. In Arduino IDE, install **esp32 by Espressif Systems** through Boards Manager, if needed.
+3. Under **Tools**, select:
 
-```mermaid
-flowchart TD
-    A[Define application] --> B{Choose route}
-    B -->|Custom| C[Collect and split data]
-    C --> D[Train and test]
-    B -->|Approved baseline| E[Inspect pretrained model]
-    D --> F[Deploy to XIAO]
-    E --> F
-    F --> G{Live inference works}
-    G -->|No| H[Check sensor and memory]
-    H --> F
-    G -->|Yes| I[Measure and submit]
+   | Setting | Value |
+   |---|---|
+   | Board | **XIAO_ESP32S3** |
+   | Port | Your XIAO USB port |
+   | PSRAM | **OPI PSRAM** |
+   | USB CDC On Boot | Enabled, if available |
+
+4. After uploading, open **Serial Monitor** at **115200 baud**.
+5. Upload ```files>examples>basic>Blink``` to check succesful hardware setup
+
+> [!IMPORTANT]
+> You may choose **ESP-EYE** in Edge Impulse when the XIAO is absent from the *performance-estimation* list. This is only an estimate. **Keep XIAO_ESP32S3 selected in Arduino IDE.**
+
+---
+
+# Part 1 — Prepare and Evaluate the Model
+
+## Path A — Edge Impulse
+
+1. Create a project at [Edge Impulse](https://edgeimpulse.com/).
+2. Record or upload samples, label them, and create training and test sets.
+3. Under **Impulse Design**, configure and train a small model. Use **INT8 quantization** when supported.
+4. Under **Model Testing**, record the test accuracy (or reported detection metric) and save one example prediction.
+5. On the **Deployment** page, record the estimated **latency, Flash/ROM, and RAM**, along with the target device used for the estimate.
+6. Select Deployment target -> arduino library , Inference engine -> TensorFLow Lite and Quantized (int8)
+
+## Path B — Pretrained Gesture Model
+
+Open the [SenseCraft gesture example](https://sensecraft.seeed.cc/ai/view-model/60111-gesture-detection?tab=public). Follow its supported XIAO deployment instructions. Record the model name and link. **Skip the training steps and Arduino camera-code changes below.**
+
+---
+
+# Part 2 — Deploy to XIAO (Path A)
+
+## Step 1 — Import the Edge Impulse Library
+
+1. In Edge Impulse, open **Deployment → Arduino library**; select **TensorFlow Lite** and **Quantized (INT8)** if available. Build and download the `.zip` file.
+2. In Arduino IDE, select **Sketch → Include Library → Add .ZIP Library**.
+3. Open **File → Examples → [your Edge Impulse library] → esp32_camera** for camera projects. For audio projects, use the matching microphone example.
+4. Keep the generated model include (for example, `#include <my_project_inferencing.h>`) unchanged. **The next edits are in the `esp32_camera` sketch, not in that header file.**
+
+## Step 2 — Change the Camera Pins (camera projects only)
+
+The example uses **ESP-EYE camera pins**, which differ from XIAO pins. Make **only these two edits**.
+
+### Edit A: Replace the GPIO numbers
+
+At the **top of the `esp32_camera` sketch**, find:
+
+```cpp
+#define CAMERA_MODEL_ESP_EYE
+...
+#if defined(CAMERA_MODEL_ESP_EYE)
+    // ESP-EYE pin definitions are here
 ```
 
-## Part 0 — Prepare the hardware and software
+**Keep** `#define CAMERA_MODEL_ESP_EYE` and `#if defined(CAMERA_MODEL_ESP_EYE)` as they are. Within that `#if` block, **remove the old ESP-EYE camera pin `#define` lines**, from `PWDN_GPIO_NUM` through `PCLK_GPIO_NUM`, and paste these **XIAO pin definitions in the same place**:
 
-### Check the equipment
+```cpp
+#define PWDN_GPIO_NUM   -1
+#define RESET_GPIO_NUM  -1
+#define XCLK_GPIO_NUM   10
+#define SIOD_GPIO_NUM   40
+#define SIOC_GPIO_NUM   39
+#define Y9_GPIO_NUM     48
+#define Y8_GPIO_NUM     11
+#define Y7_GPIO_NUM     12
+#define Y6_GPIO_NUM     14
+#define Y5_GPIO_NUM     16
+#define Y4_GPIO_NUM     18
+#define Y3_GPIO_NUM     17
+#define Y2_GPIO_NUM     15
+#define VSYNC_GPIO_NUM  38
+#define HREF_GPIO_NUM   47
+#define PCLK_GPIO_NUM   13
+```
 
-- XIAO ESP32-S3 Sense with its camera and microphone expansion board, or an approved equivalent sensor configuration.
-- USB-C cable that supports data transfer.
-- Computer with Arduino IDE and access to Edge Impulse.
-- A microSD card only if your chosen data collection example needs one.
+If old pins are present as comments (`// #define ...`), you can remove those comments too. **Do not remove** the nearby `#elif`, `#else`, or `#endif` lines. You do **not** need to rename `CAMERA_MODEL_ESP_EYE` for this lab: it is the name of the code branch, and the branch now contains the XIAO pin values.
 
-Disconnect power before you reseat the camera or expansion board. Record the camera model printed on your module or reported by its example. A plain XIAO ESP32-S3 does not include the Sense camera and microphone.
+### Edit B: Remove two ESP-EYE-only pin settings
 
-### Configure Arduino
+Press **Ctrl+F** in the same sketch and search for `ei_camera_init`. Inside that function, find **and delete this entire four-line block**:
 
-1. Install Arduino IDE. In Boards Manager, install **esp32 by Espressif Systems**. Use the course-tested version once it is published.
-2. If the package is not listed, add this official index under Preferences → Additional Boards Manager URLs: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`.
-3. Connect the board. Select **XIAO_ESP32S3** and the port that appears when it is connected. The port name varies by computer.
-4. Enable PSRAM. Select **OPI PSRAM** when that option is shown for this board. If your validated package shows **Enabled**, record that label. Do not copy another ESP32 board's settings without checking them.
-5. Record the Flash size, partition scheme, USB CDC setting, upload speed, IDE version, and ESP32 core version. For the standard Sense board, the physical Flash size is 8 MB. The application must also fit its selected application partition.
-6. Upload a simple serial example. Use the sketch's baud rate; the referenced inference examples use 115200.
-7. Capture a screenshot showing the board and port, plus a screenshot showing the PSRAM setting.
+```cpp
+#if defined(CAMERA_MODEL_ESP_EYE)
+  pinMode(13, INPUT_PULLUP);
+  pinMode(14, INPUT_PULLUP);
+#endif
+```
 
-Source: [Seeed setup](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/) and [XIAO PSRAM configuration](https://wiki.seeedstudio.com/sensecraft-ai/tutorials/sensecraft-ai-sscmacore-library/). The latter is a settings reference, not a replacement for the Edge Impulse workflow.
+On the XIAO, GPIO 13 and GPIO 14 are camera signal pins. **Leave the rest of `ei_camera_init()` unchanged.**
 
-**Version check:** Older examples and current ESP32 cores can use different camera or microphone APIs. The generic Edge Impulse Arduino page still describes testing with core 2.0.4, whereas Seeed's XIAO tutorial requires at least 2.0.8 for the board definition. Do not select 2.0.4 solely from the generic tutorial. The instructor must publish a tested combination of board package, sketch, and exported library.
+> [!NOTE]
+> This is the same minimal camera-pin modification used in the class example. Audio projects do not need camera GPIO edits.
 
-### Test the sensor first
+## Step 3 — Upload and Test
 
-For a camera project, run the [Seeed camera example](https://wiki.seeedstudio.com/xiao_esp32s3_camera_usage/) and confirm that it captures an image. For audio, use the [Seeed keyword spotting guide](https://wiki.seeedstudio.com/xiao_esp32s3_keyword_spotting/) to select the recording example for your ESP32 core. Confirm that the recording contains the expected sound before training.
+1. Confirm the **XIAO board**, correct **Port**, and **OPI PSRAM** setting.
+2. Click **Verify**, then **Upload**. Save a screenshot showing a successful upload.
+3. Open **Serial Monitor (115200 baud)**. Present an object or other model input.
+4. Check the prediction labels, confidence scores, and inference timing. Save a screenshot or short video of successful **on-device inference**.
 
-Keep the sensor check separate from the model check. This makes a failure easier to locate.
+---
 
-## Part 1 — Define and train the model
+# Troubleshooting — If You Get an Error
 
-### Define a small task
+**Only apply a fix if you see that error.**
 
-Write two or three sentences stating the input, desired output, and intended operating conditions. Keep the first model small. For images, start with a few classes and a low input resolution. For audio, include background noise and sounds outside the target class. A useful project can be simple if its evaluation is clear.
+| Error | First action |
+|---|---|
+| `Camera init failed` / `Camera probe failed` | Check the camera connection and the GPIO values in **Edit A**. |
+| `ERR: Failed to allocate snapshot buffer!` | Enable **Tools → PSRAM → OPI PSRAM**. If it continues, use the buffer fix below. |
+| `AllocateTensors() failed` / classifier `(-3)` | Use the tensor arena fix below. |
+| `..._inferencing.h: No such file` | Reimport the Edge Impulse `.zip` and verify the generated include name. |
+| No Serial Monitor text | Select the correct port and **115200 baud**; enable USB CDC On Boot if available. |
 
-### Collect and divide the data
+### Buffer fix (only for `Failed to allocate snapshot buffer!`)
 
-1. Create an Edge Impulse project and choose image, audio, or object detection data as appropriate.
-2. Collect labeled examples. Vary lighting, distance, orientation, or background noise within the intended use case.
-3. Keep complete capture sessions separate when you split training and test sets. Do not place adjacent frames from the same recording, or overlapping audio windows, in both sets.
-4. Record the number of examples per class. For audio, also record duration, sample rate, and window length. For detection, annotate objects as required by the selected model.
-5. Use training and validation data to adjust the model. Keep the test set for final evaluation. If you use test failures to tune the model, report that change and obtain a fresh test set where possible.
+In `esp32_camera`, add `#include "esp_heap_caps.h"` near the other includes. In `loop()`, **replace** the `snapshot_buf = (uint8_t*)malloc(...);` statement with:
 
-Suggested starting point, not a course minimum: collect roughly 50–100 varied images per class for a small image experiment. The data needed depends on the task. More near-duplicate images do not replace variation.
+```cpp
+snapshot_buf = (uint8_t*)heap_caps_malloc(
+    320 * 240 * 3, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+```
 
-### Build the impulse
+Keep the existing null check and `free(snapshot_buf)` calls. This moves the 225 KiB RGB image buffer to PSRAM.
 
-1. Select an input block, a processing block, and a learning block suitable for your task.
-2. For images, use image processing with a small transfer-learning classifier, or a compact supported detector. For audio, use the audio feature extractor and classifier in the chosen example.
-3. Generate features and train the model. Record input dimensions or audio window settings, class names, and key training parameters.
-4. Select and evaluate the **quantized INT8** version intended for deployment. Record the export settings. INT8 neural-network inference does not, by itself, prove that every sensor-processing operation uses integer arithmetic.
-5. Run **Model testing** on the held-out test set. Save the test summary, confusion matrix or detector results, and one example prediction. Include an incorrect result if available.
+### Tensor fix (only for `AllocateTensors() failed`)
 
-For classification, report test accuracy and test-set size. For detection, report the actual metric shown, such as F1, precision/recall, or mAP where supported. Do not rename these metrics “classification accuracy.” Record thresholds and evaluation conditions. See [Edge Impulse model testing](https://docs.edgeimpulse.com/studio/projects/model-testing).
+In the **installed Edge Impulse library**, open `src/tflite-model/tflite_learn_*.h`. Search for the constant ending in `_arena_size`. **Try doubling its numeric value**, then recompile and upload. For example, change `185036` to `370072` **only if 185036 is the value in your file**. Other models use different values. If your library has a separate maximum arena-size setting, keep it consistent. If this still fails, a smaller model may be needed.
 
-### Record deployment estimates
+---
 
-Save the displayed latency, Flash, and RAM estimates, including the selected target, model variant, and optimization setting. These values may appear on training or deployment pages rather than Model testing. If an estimate is unavailable, write “not reported” and state the reason. See [Edge Impulse deployment](https://docs.edgeimpulse.com/studio/projects/deployment).
+# Part 3 — Demonstration and Evaluation
 
-## Part 2 — Export and deploy through Arduino
+Show successful inference on the physical board. Record the following in the [Lab 3 Submission Report](Lab3_Submission.md):
 
-### Export the correct package
+| Required result | What to submit |
+|---|---|
+| Model test result | Test metric and example prediction (**Path A**), or five gesture trials (**Path B**) |
+| Inference latency | Three on-device timing readings if available, plus their median |
+| Model memory | Edge Impulse **Flash/ROM and RAM estimates separately**, if available |
+| Evidence | Successful upload/deployment and a live inference screenshot or short video |
+| Reflection | One issue or tradeoff in running AI on a microcontroller |
 
-Open **Deployment**, select **Arduino library**, select the intended quantized model and optimization options, and build the ZIP. Import it with Sketch → Include Library → Add .ZIP Library. A standalone `.tflite` export is not the Arduino library package. Keep the export date or version with your work.
+**Label estimated values as estimates.** An ESP-EYE estimate is not a measurement on the XIAO. If a metric is unavailable, write **N/A** rather than guessing.
 
-Use the generated library's **static_buffer** example to check that the model compiles and runs on the board. Supply an actual feature vector from your project. This is a diagnostic step; it does not replace the live-sensor demonstration. See [Edge Impulse Arduino deployment](https://docs.edgeimpulse.com/hardware/deployments/run-arduino-2-0).
+---
 
-### Connect the model to the live sensor
+# After the Experiments
 
-Use the [Seeed image classification sketch](https://wiki.seeedstudio.com/tinyml_course_Image_classification_project/) or the corresponding audio example as a starting point. Change the inference-header name to match your exported library. Keep the original license notices and record the source URL.
+Complete [Lab 3 Submission Report](Lab3_Submission.md). Submit **one report per team**.
 
-For the camera, select `CAMERA_MODEL_XIAO_ESP32S3` where the example supports it. Verify the pin map; selecting an Arduino board alone does not fix a sketch that still uses ESP-EYE or AI Thinker camera pins.
-
-| Camera signal | GPIO | Camera signal | GPIO |
-| --- | ---: | --- | ---: |
-| XCLK | 10 | PCLK | 13 |
-| SIOD | 40 | SIOC | 39 |
-| VSYNC | 38 | HREF | 47 |
-| Y2 / D0 | 15 | Y3 / D1 | 17 |
-| Y4 / D2 | 18 | Y5 / D3 | 16 |
-| Y6 / D4 | 14 | Y7 / D5 | 12 |
-| Y8 / D6 | 11 | Y9 / D7 | 48 |
-| PWDN | -1 | RESET | -1 |
-
-Match resize/crop behavior, color format, and input dimensions to the trained model. For the Sense microphone, verify PDM clock GPIO42 and data GPIO41, and match sampling and window settings. These are camera/audio paths; the board has no built-in IMU for motion-sensor gesture input.
-
-Compile, upload, and reopen the runtime port if it changes. Save build and upload evidence. Open Serial Monitor at the sketch's baud rate, then present live inputs and confirm that predictions change appropriately. Record one failure condition as well as a successful case.
-
-## Part 3 — Measure and demonstrate
-
-### Model quality
-
-Keep Edge Impulse held-out test results separate from your live demonstration. A confidence score from one prediction is not accuracy. For a small live classification check, count correct predictions and total trials; report the fraction and conditions. For a detector, describe how you matched detections to actual objects and use an appropriate metric.
-
-### Latency
-
-Record the DSP and neural-network timing shown by the board. For an anomaly model, also record the anomaly stage. State exactly which stages your reported latency includes.
-
-For this draft, use a repeatable measurement protocol: discard the first inference, collect at least 20 subsequent runs, and report the mean, minimum, maximum, and run count. Keep the same input settings. If timing rounds to zero milliseconds, use a finer timer or report its resolution; do not claim zero execution time.
-
-End-to-end latency is optional but useful. If you measure it, time from sensor acquisition through prediction availability. State whether audio acquisition, camera capture, preprocessing, and output transmission are included. Do not substitute neural-network time for this full interval.
-
-### Flash and RAM
-
-Report Flash and RAM separately. Flash stores the program and model; RAM holds runtime data. Do not add them into one “model size” number.
-
-| Measurement | What to record | Interpretation |
-| --- | --- | --- |
-| Edge Impulse Flash estimate | Value, units, target, model variant | Estimate for the exported impulse |
-| Edge Impulse RAM estimate | Value, units, target, model variant | Estimate; verify what the displayed value covers |
-| Arduino program storage | Used bytes and application limit | Firmware use, including more than model weights |
-| Arduino static RAM | Used bytes and reported limit | Does not show all dynamic allocations or PSRAM use |
-| Runtime memory, optional | Free/minimum heap and PSRAM with sampling point | Diagnostic observation; not model-only memory |
-
-### Demonstration evidence
-
-Provide a readable screenshot or short video that connects a known live input to output from the physical board. Show the board/sensor setup and prediction output in one view, or in clearly linked captures. For audio, identify the sound or keyword used. The Serial Monitor capture must show predictions and measured timing. For a custom model, also include one Edge Impulse inference result; that result alone is not the hardware demonstration.
-
-## Pretrained baseline route
-
-Use this route only after the instructor publishes a model and deployment procedure verified on the course hardware. The original gesture link is under compatibility review. The preferred fallback proposal is an instructor-provided Edge Impulse Arduino library and matching sketch, which preserves the Arduino deployment steps without requiring new training.
-
-For an approved pretrained model:
-
-- Record its source, version, supported target, labels, input format, and available license information.
-- Explain that you did not train the model. Mark your own training/test metrics “N/A — pretrained route.” Do not copy a publisher's accuracy into a field for your measured accuracy.
-- Run your own labeled live trials. Report the metric, trial count, conditions, and a failure case.
-- Submit actual board timing and available resource measurements. Mark inaccessible values “not reported” with a reason.
-- Include build/upload evidence for the Arduino route. If the instructor approves a browser-flashing route, use deployment-success evidence instead and identify the route.
-
-The instructor must confirm the baseline evidence substitution and grading treatment before release. A model running on an external AI module does not establish that inference runs on the XIAO.
-
-## Troubleshooting
-
-| Symptom | Next check |
-| --- | --- |
-| No port appears | Use a data cable; reconnect and inspect the device list |
-| Upload cannot connect | Close other serial clients; follow Seeed's BOOT/reset procedure and select the new port |
-| No serial output | Check baud rate, runtime port, USB CDC setting, and any `while (!Serial)` wait |
-| Camera initialization fails | Check the camera model, connector, XIAO pin map, and PSRAM |
-| Allocation failure or reset | Check PSRAM, image buffers, input size, and the first reported error |
-| Sketch is too large | Check the application partition; reduce model size or use a documented optimization |
-| Compile errors after a core update | Compare against the course-tested core and example; check camera/I2S API compatibility |
-| Wrong predictions on the board | Check preprocessing, sample rate, labels, exported model version, and real input conditions |
-| Duplicate inference libraries | Identify which library Arduino selected and remove the unintended duplicate from the build path |
-
-## Submission check
-
-Complete [Lab3_Submission.md](Lab3_Submission.md). Keep filenames and links readable. Submit through the course location when announced. Include evidence and source code in your package; do not rely on an inaccessible private project link. Remove API keys and Wi-Fi credentials from shared code. Cite any adapted data, code, or pretrained model.
-
-## Deliverables
-
-Submit the completed [Lab3_Submission.md](Lab3_Submission.md) with:
-
-1. Edge Impulse test results and an example prediction, or the approved pretrained substitutions.
-2. Board/port and PSRAM configuration evidence.
-3. Successful compilation and upload evidence.
-4. A screenshot or short video of live inference on the board, with readable predictions and timing.
-5. A performance table that identifies each metric's source and separates Flash from RAM.
-6. The final sketch, dependency versions, source links, and a description of your changes.
-
-The due date, submission location, and grading policy will be announced by the instructor.
-
-## Additional Resources
-
-- [XIAO ESP32-S3 getting started](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/)
-- [Edge Impulse](https://edgeimpulse.com/)
-- [Community examples](https://github.com/hpssjellis/maker100-eco)
-- [Supplied tutorial video](https://www.youtube.com/watch?v=HDRvZ_BYd08) — confirm board-specific settings against this guide.
-- [Supplied object-detection video](https://www.youtube.com/watch?v=7Aucyd10Mtw) — content review pending.
-
-The supplied [gesture model](https://sensecraft.seeed.cc/ai/view-model/60111-gesture-detection?tab=public) is under hardware-compatibility review and is not yet a verified baseline for the course board.
+**Useful resources:** [Seeed XIAO guide](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/) · [Image classification](https://wiki.seeedstudio.com/tinyml_course_Image_classification_project/) · [Object detection video](https://www.youtube.com/watch?v=7Aucyd10Mtw) · [Deployment video](https://www.youtube.com/watch?v=HDRvZ_BYd08)
