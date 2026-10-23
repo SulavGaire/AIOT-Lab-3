@@ -44,6 +44,9 @@ Choose application → Prepare model → Deploy to XIAO → Test → Report resu
    | Port | Your XIAO USB port |
    | PSRAM | **OPI PSRAM** |
    | USB CDC On Boot | Enabled, if available |
+   ![Port Selection](./../images/portlocation.png)
+   ![Port Selection](./../images/portselection.png)
+   ![PSRAM Selection](./../images/PSRM.png)
 
 4. After uploading, open **Serial Monitor** at **115200 baud**.
 5. Upload ```files>examples>basic>Blink``` to check succesful hardware setup
@@ -59,6 +62,7 @@ Choose application → Prepare model → Deploy to XIAO → Test → Report resu
 
 1. Create a project at [Edge Impulse](https://edgeimpulse.com/).
 2. Record or upload samples, label them, and create training and test sets.
+![DataCollection](./../images/datacollection.png)
 3. Under **Impulse Design**, configure and train a small model. Use **INT8 quantization** when supported.
 4. Under **Model Testing**, record the test accuracy (or reported detection metric) and save one example prediction.
 5. On the **Deployment** page, record the estimated **latency, Flash/ROM, and RAM**, along with the target device used for the estimate.
@@ -73,6 +77,7 @@ Open the [SenseCraft gesture example](https://sensecraft.seeed.cc/ai/view-model/
 # Part 2 — Deploy to XIAO (Path A)
 
 ## Step 1 — Import the Edge Impulse Library
+![PSRAM Selection](./../images/edgedeployment.png)
 
 1. In Edge Impulse, open **Deployment → Arduino library**; select **TensorFlow Lite** and **Quantized (INT8)** if available. Build and download the `.zip` file.
 2. In Arduino IDE, select **Sketch → Include Library → Add .ZIP Library**.
